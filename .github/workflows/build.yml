@@ -39,3 +39,21 @@ jobs:
           tags: layer6ai/patientpal:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into EC2 instance and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            docker pull layer6ai/patientpal:latest
+            docker stop patientpal-be || true
+            docker rm patientpal-be || true
+            docker run -d --name patientpal-be -p 8080:8080 \
+              -e JASYPT_ENCRYPTOR_PASSWORD=${{ secrets.JASYPT_ENCRYPTOR_PASSWORD }} \
+              layer6ai/patientpal:latest
